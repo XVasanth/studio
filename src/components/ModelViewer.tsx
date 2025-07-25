@@ -67,7 +67,7 @@ export default function ModelViewer({
 
   return (
     <Card className={cn(
-        "flex flex-col transition-all duration-300",
+        "flex flex-col transition-all duration-300 w-full",
         highlight && "ring-2 ring-accent shadow-accent/50 shadow-lg"
       )}>
       <CardHeader>

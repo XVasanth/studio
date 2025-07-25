@@ -27,10 +27,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { checkCadPlagiarismAction } from "@/lib/actions";
 import type { CadFile, PlagiarismFlag, BackupFile } from "@/lib/types";
-import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock } from "lucide-react";
+import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock, TestTube } from "lucide-react";
 
 // Mock data for backup files
 const mockBackups: BackupFile[] = [
@@ -39,10 +40,12 @@ const mockBackups: BackupFile[] = [
     { id: 'bck_003', name: 'gearbox-housing-final.step', timestamp: '2023-10-25 09:15 UTC', reportUrl: '#', checkedBy: 'admin@cad.com' },
 ];
 
+const experiments = ["Experiment 1: Gear Design", "Experiment 2: Bracket Analysis", "Experiment 3: Assembly Modeling"];
 
 export default function AdminPage() {
   const [checkFiles, setCheckFiles] = useState<CadFile[]>([]);
   const [flags, setFlags] = useState<PlagiarismFlag[]>([]);
+  const [selectedExperiment, setSelectedExperiment] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -78,6 +81,14 @@ export default function AdminPage() {
     };
 
   const runPlagiarismCheck = () => {
+    if (!selectedExperiment) {
+        toast({
+            variant: "destructive",
+            title: "Experiment Required",
+            description: "Please select an experiment before running the check.",
+        });
+        return;
+    }
     if (checkFiles.length < 2) {
       toast({
         variant: "destructive",
@@ -104,7 +115,7 @@ export default function AdminPage() {
         setFlags(result.plagiarismFlags);
         toast({
           title: "Success",
-          description: "Plagiarism check completed.",
+          description: `Plagiarism check completed for ${selectedExperiment}.`,
         });
       }
     });
@@ -122,23 +133,39 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><GitCompareArrows/> Plagiarism Checker</CardTitle>
             <CardDescription>
-              Upload multiple student STEP files to check for header plagiarism.
+              Select an experiment and upload multiple student STEP files to check for header plagiarism.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-2">
+                <Label htmlFor="experiment-select-admin">Experiment Number</Label>
+                <Select onValueChange={setSelectedExperiment} value={selectedExperiment}>
+                    <SelectTrigger id="experiment-select-admin">
+                        <div className="flex items-center gap-2">
+                            <TestTube className="w-4 h-4 text-muted-foreground"/>
+                            <SelectValue placeholder="Select an experiment..." />
+                        </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                        {experiments.map((exp) => (
+                            <SelectItem key={exp} value={exp}>{exp}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
              <div className="space-y-2">
               <Label>Student Files</Label>
-              <Input type="file" multiple onChange={handleFileSelect(setCheckFiles, true)} className="file:text-primary file:font-semibold"/>
+              <Input type="file" multiple onChange={handleFileSelect(setCheckFiles, true)} className="file:text-primary file:font-semibold" disabled={!selectedExperiment}/>
                {checkFiles.length > 0 && <p className="text-sm text-muted-foreground pt-1">Loaded {checkFiles.length} file(s)</p>}
             </div>
-            <Button onClick={runPlagiarismCheck} disabled={isPending} className="w-full">
+            <Button onClick={runPlagiarismCheck} disabled={isPending || !selectedExperiment} className="w-full">
               {isPending ? <Loader2 className="animate-spin mr-2" /> : <FileText className="mr-2" />}
               Run Check
             </Button>
 
             {flags.length > 0 && (
                  <div className="space-y-4 pt-4">
-                    <h3 className="font-semibold text-lg">Plagiarism Report</h3>
+                    <h3 className="font-semibold text-lg">Plagiarism Report for {selectedExperiment}</h3>
                     <Accordion type="single" collapsible className="w-full">
                         {flags.map((flag, index) => (
                         <AccordionItem value={`item-${index}`} key={index}>
