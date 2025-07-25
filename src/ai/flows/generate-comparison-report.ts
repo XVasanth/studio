@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -10,17 +11,18 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import {googleAI} from '@genkit-ai/googleai';
 
 const GenerateComparisonReportInputSchema = z.object({
   baseModelDataUri: z
     .string()
     .describe(
-      'The base CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
+      "The base CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
   modifiedModelDataUri: z
     .string()
     .describe(
-      'The modified CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
+      "The modified CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type GenerateComparisonReportInput = z.infer<
@@ -49,6 +51,7 @@ const generateComparisonReportPrompt = ai.definePrompt({
   name: 'generateComparisonReportPrompt',
   input: {schema: GenerateComparisonReportInputSchema},
   output: {schema: GenerateComparisonReportOutputSchema},
+  model: googleAI.model('gemini-2.0-flash'),
   prompt: `You are an expert CAD model comparison tool. You will analyze two STEP files to identify differences.
   
 1.  **Analyze Deviation**: Compare the student's model to the base model. Calculate a deviation percentage based on metrics like Hausdorff distance, volume difference, and surface area changes.
