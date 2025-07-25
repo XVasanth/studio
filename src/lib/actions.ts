@@ -1,3 +1,4 @@
+
 "use server";
 
 import {
@@ -10,6 +11,17 @@ import {
   type GenerateComparisonReportInput,
   type GenerateComparisonReportOutput,
 } from "@/ai/flows/generate-comparison-report";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { storage } from "@/lib/firebase";
+
+
+export async function uploadFileToStorage(fileDataUri: string, path: string): Promise<string> {
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadString(storageRef, fileDataUri, 'data_url');
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    return downloadUrl;
+}
+
 
 export async function generateComparisonReportAction(
   input: GenerateComparisonReportInput

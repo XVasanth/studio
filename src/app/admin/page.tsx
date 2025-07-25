@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { checkCadPlagiarismAction } from "@/lib/actions";
+import { checkCadPlagiarismAction, uploadFileToStorage } from "@/lib/actions";
 import type { CadFile, PlagiarismFlag, BackupFile } from "@/lib/types";
 import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock, TestTube } from "lucide-react";
 
@@ -75,6 +75,23 @@ export default function AdminPage() {
 
       if (isMultiple) {
         setter((prev: CadFile[]) => [...prev, ...processedFiles]);
+        startTransition(async () => {
+          for (const file of processedFiles) {
+            try {
+              const downloadUrl = await uploadFileToStorage(file.dataUri, `admins/exp-${selectedExperiment}/${file.name}`);
+              toast({
+                  title: "File uploaded successfully",
+                  description: `File ${file.name} is saved.`,
+              });
+            } catch (error) {
+               toast({
+                    variant: "destructive",
+                    title: "File upload failed",
+                    description: (error as Error).message,
+                });
+            }
+          }
+        });
       } else {
         setter(processedFiles[0]);
       }

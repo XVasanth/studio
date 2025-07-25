@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { generateComparisonReportAction } from "@/lib/actions";
+import { generateComparisonReportAction, uploadFileToStorage } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import ModelViewer from "@/components/ModelViewer";
 import type { CadFile, ModelProperties } from "@/lib/types";
@@ -66,7 +66,7 @@ export default function StudentDashboardPage() {
   }, [selectedExperiment]);
 
 
-  const handleModifiedModelUpload = (file: CadFile) => {
+  const handleModifiedModelUpload = async (file: CadFile) => {
     setModifiedModel(file);
     // In a real app, you'd extract these properties from the file
     setModifiedProperties({
@@ -74,6 +74,25 @@ export default function StudentDashboardPage() {
       surfaceArea: 15500,
       material: "Aluminum 6061",
     });
+
+    if(file.dataUri) {
+        startTransition(async () => {
+            try {
+                const downloadUrl = await uploadFileToStorage(file.dataUri, `students/exp-${selectedExperiment}/${file.name}`);
+                toast({
+                    title: "File uploaded successfully",
+                    description: `File ${file.name} is saved.`,
+                });
+                // you might want to store downloadUrl in your state
+            } catch (error) {
+                toast({
+                    variant: "destructive",
+                    title: "File upload failed",
+                    description: (error as Error).message,
+                });
+            }
+        });
+    }
   };
 
   const handleGenerateReport = () => {
