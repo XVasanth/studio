@@ -40,7 +40,7 @@ const mockBackups: BackupFile[] = [
     { id: 'bck_003', name: 'gearbox-housing-final.step', timestamp: '2023-10-25 09:15 UTC', reportUrl: '#', checkedBy: 'admin@cad.com' },
 ];
 
-const experiments = ["Experiment 1: Gear Design", "Experiment 2: Bracket Analysis", "Experiment 3: Assembly Modeling"];
+const experiments = Array.from({ length: 20 }, (_, i) => (i + 1).toString());
 
 export default function AdminPage() {
   const [checkFiles, setCheckFiles] = useState<CadFile[]>([]);
@@ -115,7 +115,7 @@ export default function AdminPage() {
         setFlags(result.plagiarismFlags);
         toast({
           title: "Success",
-          description: `Plagiarism check completed for ${selectedExperiment}.`,
+          description: `Plagiarism check completed for Experiment ${selectedExperiment}.`,
         });
       }
     });
@@ -148,7 +148,7 @@ export default function AdminPage() {
                     </SelectTrigger>
                     <SelectContent>
                         {experiments.map((exp) => (
-                            <SelectItem key={exp} value={exp}>{exp}</SelectItem>
+                            <SelectItem key={exp} value={exp}>Experiment {exp}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -165,7 +165,7 @@ export default function AdminPage() {
 
             {flags.length > 0 && (
                  <div className="space-y-4 pt-4">
-                    <h3 className="font-semibold text-lg">Plagiarism Report for {selectedExperiment}</h3>
+                    <h3 className="font-semibold text-lg">Plagiarism Report for Experiment {selectedExperiment}</h3>
                     <Accordion type="single" collapsible className="w-full">
                         {flags.map((flag, index) => (
                         <AccordionItem value={`item-${index}`} key={index}>

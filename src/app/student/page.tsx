@@ -29,7 +29,7 @@ const initialProperties: Omit<ModelProperties, 'dimensions'> = {
 
 // Simulate a pre-loaded base model from the instructor
 const getInstructorBaseModel = (experiment: string): CadFile => ({
-    name: `base-model-${experiment.toLowerCase().replace(/[^a-z0-9]/g, '-')}.step`,
+    name: `base-model-experiment-${experiment}.step`,
     size: 128000,
     dataUri: "data:application/octet-stream;base64,c2ltdWxhdGVkIGZpbGUgY29udGVudA==", // dummy data
 });
@@ -40,7 +40,7 @@ const instructorBaseModelProperties: Omit<ModelProperties, 'dimensions'> = {
   material: "Aluminum 6061",
 };
 
-const experiments = ["Experiment 1: Gear Design", "Experiment 2: Bracket Analysis", "Experiment 3: Assembly Modeling"];
+const experiments = Array.from({ length: 20 }, (_, i) => (i + 1).toString());
 
 export default function StudentDashboardPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<string>("");
@@ -131,7 +131,7 @@ export default function StudentDashboardPage() {
                     </SelectTrigger>
                     <SelectContent>
                         {experiments.map((exp) => (
-                            <SelectItem key={exp} value={exp}>{exp}</SelectItem>
+                            <SelectItem key={exp} value={exp}>Experiment {exp}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
