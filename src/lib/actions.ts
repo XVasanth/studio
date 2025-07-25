@@ -19,7 +19,7 @@ export async function generateComparisonReportAction(
     return result;
   } catch (e: any) {
     console.error("Error generating comparison report:", e);
-    return { report: "", error: e.message || "An unknown error occurred." };
+    return { report: "", deviationPercentage: 0, error: e.message || "An unknown error occurred." };
   }
 }
 
@@ -32,7 +32,7 @@ export async function checkCadPlagiarismAction(
   } catch (e: any) {
     console.error("Error checking for plagiarism:", e);
     return {
-      plagiarismReports: [],
+      plagiarismFlags: [],
       error: e.message || "An unknown error occurred.",
     };
   }

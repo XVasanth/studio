@@ -15,12 +15,11 @@ export type ModelProperties = {
   material: string;
 };
 
-export type PlagiarismReportItem = {
-  fileDataUri: string;
-  fileName: string; // I'll add this for UI
-  isPlagiarized: boolean;
-  similarityScore: number;
-  explanation: string;
+// This type is for the student-to-student check
+export type PlagiarismFlag = {
+  fileName: string;
+  isFlagged: boolean;
+  reason: string;
 };
 
 export type BackupFile = {

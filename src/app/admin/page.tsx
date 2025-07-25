@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { checkCadPlagiarismAction } from "@/lib/actions";
-import type { CadFile, PlagiarismReportItem, BackupFile } from "@/lib/types";
+import type { CadFile, PlagiarismFlag, BackupFile } from "@/lib/types";
 import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock } from "lucide-react";
 
 // Mock data for backup files
@@ -39,9 +39,8 @@ const mockBackups: BackupFile[] = [
 
 
 export default function AdminPage() {
-  const [baseModel, setBaseModel] = useState<CadFile | null>(null);
   const [checkFiles, setCheckFiles] = useState<CadFile[]>([]);
-  const [reports, setReports] = useState<PlagiarismReportItem[]>([]);
+  const [flags, setFlags] = useState<PlagiarismFlag[]>([]);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -77,26 +76,17 @@ export default function AdminPage() {
     };
 
   const runPlagiarismCheck = () => {
-    if (!baseModel) {
-      toast({
-        variant: "destructive",
-        title: "Base Model Required",
-        description: "Please upload a base model to compare against.",
-      });
-      return;
-    }
-    if (checkFiles.length === 0) {
+    if (checkFiles.length < 2) {
       toast({
         variant: "destructive",
         title: "Files Required",
-        description: "Please upload files to check for plagiarism.",
+        description: "Please upload at least two files to check for plagiarism.",
       });
       return;
     }
 
     startTransition(async () => {
       const result = await checkCadPlagiarismAction({
-        baseModelDataUri: baseModel.dataUri,
         uploadedFileDataUris: checkFiles.map((f) => f.dataUri),
       });
 
@@ -106,13 +96,10 @@ export default function AdminPage() {
           title: "Plagiarism Check Failed",
           description: result.error,
         });
-        setReports([]);
+        setFlags([]);
       } else {
-        const reportItems = result.plagiarismReports.map((report, index) => ({
-          ...report,
-          fileName: checkFiles[index].name,
-        }));
-        setReports(reportItems);
+        // The file names now come from the backend to ensure consistency
+        setFlags(result.plagiarismFlags);
         toast({
           title: "Success",
           description: "Plagiarism check completed.",
@@ -133,17 +120,12 @@ export default function AdminPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><GitCompareArrows/> Plagiarism Checker</CardTitle>
             <CardDescription>
-              Upload a base model and one or more files to check for plagiarism.
+              Upload multiple student STEP files to check for header plagiarism.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label>Base Model</Label>
-              <Input type="file" onChange={handleFileSelect(setBaseModel, false)} className="file:text-primary file:font-semibold"/>
-              {baseModel && <p className="text-sm text-muted-foreground pt-1">Loaded: {baseModel.name}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label>Files to Check</Label>
+             <div className="space-y-2">
+              <Label>Student Files</Label>
               <Input type="file" multiple onChange={handleFileSelect(setCheckFiles, true)} className="file:text-primary file:font-semibold"/>
                {checkFiles.length > 0 && <p className="text-sm text-muted-foreground pt-1">Loaded {checkFiles.length} file(s)</p>}
             </div>
@@ -152,23 +134,23 @@ export default function AdminPage() {
               Run Check
             </Button>
 
-            {reports.length > 0 && (
+            {flags.length > 0 && (
                  <div className="space-y-4 pt-4">
                     <h3 className="font-semibold text-lg">Plagiarism Report</h3>
                     <Accordion type="single" collapsible className="w-full">
-                        {reports.map((report, index) => (
+                        {flags.map((flag, index) => (
                         <AccordionItem value={`item-${index}`} key={index}>
                             <AccordionTrigger>
                                 <div className="flex items-center gap-4">
-                                {report.isPlagiarized ? <XCircle className="text-destructive"/> : <CheckCircle2 className="text-green-600"/>}
-                                <span className="font-mono text-sm">{report.fileName}</span>
-                                <Badge variant={report.isPlagiarized ? "destructive" : "secondary"}>
-                                    Similarity: {(report.similarityScore * 100).toFixed(1)}%
+                                {flag.isFlagged ? <XCircle className="text-destructive"/> : <CheckCircle2 className="text-green-600"/>}
+                                <span className="font-mono text-sm">{flag.fileName}</span>
+                                <Badge variant={flag.isFlagged ? "destructive" : "secondary"}>
+                                    {flag.isFlagged ? "Flagged" : "Clear"}
                                 </Badge>
                                 </div>
                             </AccordionTrigger>
                             <AccordionContent>
-                                {report.explanation}
+                                {flag.reason}
                             </AccordionContent>
                         </AccordionItem>
                         ))}

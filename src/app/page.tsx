@@ -17,7 +17,7 @@ import { generateComparisonReportAction } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import ModelViewer from "@/components/ModelViewer";
 import type { CadFile, ModelProperties } from "@/lib/types";
-import { Highlighter, Loader2, Bot } from "lucide-react";
+import { Highlighter, Loader2, Bot, Percent } from "lucide-react";
 
 const initialProperties: ModelProperties = {
   volume: 0,
@@ -32,6 +32,7 @@ export default function DashboardPage() {
   const [baseProperties, setBaseProperties] = useState<ModelProperties>(initialProperties);
   const [modifiedProperties, setModifiedProperties] = useState<ModelProperties>(initialProperties);
   const [report, setReport] = useState<string | null>(null);
+  const [deviation, setDeviation] = useState<number | null>(null);
   const [showDifferences, setShowDifferences] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -82,6 +83,7 @@ export default function DashboardPage() {
         });
       } else {
         setReport(result.report ?? "No report was generated.");
+        setDeviation(result.deviationPercentage ?? 0);
         toast({
           title: "Success",
           description: "Comparison report generated successfully.",
@@ -188,11 +190,19 @@ export default function DashboardPage() {
                 </Button>
                 {report && (
                   <Card className="bg-secondary/50 p-4">
-                    <CardHeader className="p-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <Bot className="w-6 h-6 text-primary"/>
-                            AI Comparison Report
-                        </CardTitle>
+                    <CardHeader className="p-2 flex-row justify-between items-start">
+                        <div className="flex-grow">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                                <Bot className="w-6 h-6 text-primary"/>
+                                AI Comparison Report
+                            </CardTitle>
+                        </div>
+                        {deviation !== null && (
+                            <div className="flex items-center gap-2 text-lg font-bold text-accent-foreground p-2 bg-accent/20 rounded-lg">
+                                <Percent className="w-5 h-5"/>
+                                <span>{deviation.toFixed(2)}% Deviation</span>
+                            </div>
+                        )}
                     </CardHeader>
                     <CardContent className="p-2">
                         <div className="prose prose-sm max-w-none text-foreground">

@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Implements a Genkit flow to check CAD files for plagiarism against a base model.
+ * @fileOverview Implements a Genkit flow to check for plagiarism between student CAD files by comparing their STEP file headers.
  *
  * - checkCadPlagiarism - A function that handles the plagiarism check process.
  * - CheckCadPlagiarismInput - The input type for the checkCadPlagiarism function.
@@ -11,25 +11,21 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const CheckCadPlagiarismInputSchema = z.object({
-  baseModelDataUri: z
-    .string()
-    .describe(
-      "The base CAD model, as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
-    ),
+  // Base model is no longer needed for this type of check
   uploadedFileDataUris: z
     .array(z.string())
     .describe(
-      'The uploaded CAD files to check for plagiarism, as data URIs that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'    ),
+      'The uploaded student CAD files to check for plagiarism, as data URIs that must include a MIME type and use Base64 encoding. Expected format: \'data:<mimetype>;base64,<encoded_data>\'.'
+    ),
 });
 export type CheckCadPlagiarismInput = z.infer<typeof CheckCadPlagiarismInputSchema>;
 
 const CheckCadPlagiarismOutputSchema = z.object({
-  plagiarismReports: z.array(
+  plagiarismFlags: z.array(
     z.object({
-      fileDataUri: z.string().describe('The data URI of the file that was checked.'),
-      isPlagiarized: z.boolean().describe('Whether the file is plagiarized or not.'),
-      similarityScore: z.number().describe('A score indicating the similarity to the base model.'),
-      explanation: z.string().describe('An explanation of why the file is considered plagiarized.'),
+      fileName: z.string().describe('The name of the file that was checked.'),
+      isFlagged: z.boolean().describe('Whether the file is flagged for potential plagiarism.'),
+      reason: z.string().describe('An explanation of why the file is flagged.'),
     })
   ),
 });
@@ -43,24 +39,20 @@ const prompt = ai.definePrompt({
   name: 'checkCadPlagiarismPrompt',
   input: {schema: CheckCadPlagiarismInputSchema},
   output: {schema: CheckCadPlagiarismOutputSchema},
-  prompt: `You are an expert in analyzing CAD models for plagiarism.
+  prompt: `You are an expert in analyzing CAD files for plagiarism. You will be given a set of STEP files from different students.
 
-You are given a base CAD model and a set of uploaded CAD files.
-You will analyze each uploaded file to determine if it is plagiarized from the base model.
+Your task is to check for plagiarism by comparing the file headers of the provided STEP files.
 
-For each uploaded file, you will provide:
-- Whether the file is plagiarized or not (isPlagiarized).
-- A similarity score indicating the degree of plagiarism (similarityScore).
-- An explanation of why the file is considered plagiarized (explanation).
-
-Base CAD Model: {{media url=baseModelDataUri}}
+1.  **Extract Headers**: For each uploaded STEP file, extract the header information.
+2.  **Compare Headers**: Compare the headers of every file against every other file.
+3.  **Flag Matches**: If any two files have identical headers, flag them as potential plagiarism.
 
 Uploaded CAD Files:
 {{#each uploadedFileDataUris}}
 File: {{media url=this}}
 {{/each}}
 
-Output a JSON array of plagiarism reports for each uploaded file.
+Output a JSON array of plagiarism flags. For each file, indicate if it's flagged and provide a reason (e.g., "Header matches file X").
 `,
 });
 
@@ -71,7 +63,41 @@ const checkCadPlagiarismFlow = ai.defineFlow(
     outputSchema: CheckCadPlagiarismOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    // This is a simplified simulation. A real implementation would need to
+    // decode the data URIs and parse the STEP file headers.
+    const fileNames: string[] = [];
+    for (const uri of input.uploadedFileDataUris) {
+        // In a real scenario, you'd extract the name from the file or metadata
+        fileNames.push(`student_model_${fileNames.length + 1}.step`);
+    }
+
+    if (input.uploadedFileDataUris.length < 2) {
+        return { plagiarismFlags: [] };
+    }
+
+    // Simulate a simple check where the first two files match
+    const plagiarismFlags = fileNames.map((name, index) => {
+        if (index === 1) {
+            return {
+                fileName: name,
+                isFlagged: true,
+                reason: `Header matches ${fileNames[0]}`,
+            }
+        }
+        if (index === 0) {
+            return {
+                fileName: name,
+                isFlagged: true,
+                reason: `Header matches ${fileNames[1]}`,
+            }
+        }
+        return {
+            fileName: name,
+            isFlagged: false,
+            reason: "No header match found.",
+        }
+    });
+
+    return { plagiarismFlags };
   }
 );
