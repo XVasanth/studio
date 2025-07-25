@@ -111,13 +111,7 @@ export default function StudentDashboardPage() {
             <h1 className="text-3xl font-bold">Student Dashboard</h1>
             <p className="text-muted-foreground">Upload your work and compare it against the base model.</p>
         </div>
-      <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
-        <ModelViewer
-          title="Base Model (from Instructor)"
-          file={baseModel}
-          highlight={showDifferences && !!modifiedModel}
-          data-ai-hint="technical drawing blueprint"
-        />
+      <div className="flex-grow flex justify-center items-center">
         <ModelViewer
           title="Your Model"
           onFileUpload={handleModifiedModelUpload}
