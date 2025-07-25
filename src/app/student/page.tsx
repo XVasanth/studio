@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -27,27 +27,31 @@ const initialProperties: ModelProperties = {
   material: "N/A",
 };
 
+// Simulate a pre-loaded base model from the instructor
+const instructorBaseModel: CadFile = {
+    name: "instructor-base-v2.step",
+    size: 128000,
+    dataUri: "data:application/octet-stream;base64,c2ltdWxhdGVkIGZpbGUgY29udGVudA==", // dummy data
+}
+
+const instructorBaseModelProperties: ModelProperties = {
+  volume: 125000,
+  surfaceArea: 15000,
+  dimensions: { x: 50, y: 50, z: 50 },
+  material: "Aluminum 6061",
+};
+
+
 export default function StudentDashboardPage() {
-  const [baseModel, setBaseModel] = useState<CadFile | null>(null);
+  const [baseModel] = useState<CadFile | null>(instructorBaseModel);
   const [modifiedModel, setModifiedModel] = useState<CadFile | null>(null);
-  const [baseProperties, setBaseProperties] = useState<ModelProperties>(initialProperties);
+  const [baseProperties] = useState<ModelProperties>(instructorBaseModelProperties);
   const [modifiedProperties, setModifiedProperties] = useState<ModelProperties>(initialProperties);
   const [report, setReport] = useState<string | null>(null);
   const [deviation, setDeviation] = useState<number | null>(null);
   const [showDifferences, setShowDifferences] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-
-  const handleBaseModelUpload = (file: CadFile) => {
-    setBaseModel(file);
-    // In a real app, you'd extract these properties from the file
-    setBaseProperties({
-      volume: 125000,
-      surfaceArea: 15000,
-      dimensions: { x: 50, y: 50, z: 50 },
-      material: "Aluminum 6061",
-    });
-  };
 
   const handleModifiedModelUpload = (file: CadFile) => {
     setModifiedModel(file);
@@ -65,7 +69,7 @@ export default function StudentDashboardPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Please upload both the base model and your model.",
+        description: "Please upload your model to generate a report.",
       });
       return;
     }
@@ -110,7 +114,6 @@ export default function StudentDashboardPage() {
       <div className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         <ModelViewer
           title="Base Model (from Instructor)"
-          onFileUpload={handleBaseModelUpload}
           file={baseModel}
           highlight={showDifferences && !!modifiedModel}
           data-ai-hint="technical drawing blueprint"
