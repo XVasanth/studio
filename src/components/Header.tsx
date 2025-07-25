@@ -15,12 +15,34 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { auth, isAdmin } from "@/lib/firebase";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, loading, error] = useAuthState(auth);
+  const [userRole, setUserRole] = useState<'admin' | 'student' | null>(null);
 
-  // This is a mock role. In a real app, this would come from an auth context.
-  const role = pathname.startsWith('/admin') || pathname === '/' ? 'admin' : 'student';
+  useEffect(() => {
+    const checkUserRole = async () => {
+        if (user && user.email) {
+            const admin = await isAdmin(user.email);
+            setUserRole(admin ? 'admin' : 'student');
+        } else {
+            setUserRole(null);
+        }
+    };
+    checkUserRole();
+  }, [user]);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/login');
+  };
 
   const navLinks = [
     { href: "/", label: "Admin Dashboard", icon: LayoutDashboard, role: 'admin' },
@@ -28,12 +50,15 @@ export function Header() {
     { href: "/student", label: "My Dashboard", icon: GraduationCap, role: 'student' },
   ];
 
-  const filteredNavLinks = navLinks.filter(link => link.role === role);
+  const filteredNavLinks = navLinks.filter(link => link.role === userRole);
+  
+  // Don't render header on login page
+  if (pathname === '/login') return null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Link href={role === 'admin' ? '/' : '/student'} className="mr-8 flex items-center space-x-2">
+        <Link href={userRole === 'admin' ? '/' : '/student'} className="mr-8 flex items-center space-x-2">
           <DraftingCompass className="h-6 w-6 text-primary" />
           <span className="font-bold text-lg">CAD Comparator</span>
         </Link>
@@ -57,7 +82,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={role === 'admin' ? "https://i.pravatar.cc/150?u=admin" : "https://i.pravatar.cc/150?u=student"} alt="User Avatar" />
+                  <AvatarImage src={user?.photoURL ?? undefined} alt="User Avatar" />
                   <AvatarFallback>
                     <User />
                   </AvatarFallback>
@@ -67,16 +92,16 @@ export function Header() {
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{role === 'admin' ? 'Admin User' : 'Student User'}</p>
+                  <p className="text-sm font-medium leading-none">{user?.displayName ?? 'User'}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    {role === 'admin' ? 'admin@cadcomparator.com' : 'student@cadcomparator.com'}
+                    {user?.email ?? 'No email'}
                   </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                 <LogOut className="mr-2 h-4 w-4" />
-                <Link href="/login">Log out</Link>
+                <span>Log out</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

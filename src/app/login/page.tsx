@@ -5,10 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { DraftingCompass, User, Shield } from "lucide-react";
+import { DraftingCompass, User, Shield, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { signInWithPopup } from "firebase/auth";
+import { auth, provider, isAdmin } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 
 
 const GoogleIcon = () => (
@@ -19,16 +20,33 @@ const GoogleIcon = () => (
 
 
 export default function LoginPage() {
-  const [role, setRole] = useState("student");
   const router = useRouter();
+  const { toast } = useToast();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  const handleLogin = () => {
-    // In a real app, you would handle authentication here.
-    // For this prototype, we'll just redirect based on role.
-    if (role === 'admin') {
-      router.push('/');
-    } else {
-      router.push('/student');
+  const handleLogin = async () => {
+    setIsLoggingIn(true);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      if (user && user.email) {
+        if (await isAdmin(user.email)) {
+          router.push('/');
+        } else {
+          router.push('/student');
+        }
+      } else {
+        throw new Error("Could not retrieve user information from Google.");
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message || "An unexpected error occurred during login.",
+      });
+    } finally {
+        setIsLoggingIn(false);
     }
   };
 
@@ -47,32 +65,9 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <RadioGroup defaultValue="student" onValueChange={setRole} className="grid grid-cols-2 gap-4">
-              <div>
-                <RadioGroupItem value="student" id="student" className="peer sr-only" />
-                <Label
-                  htmlFor="student"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                >
-                  <User className="mb-3 h-6 w-6" />
-                  Student
-                </Label>
-              </div>
-              <div>
-                <RadioGroupItem value="admin" id="admin" className="peer sr-only" />
-                <Label
-                  htmlFor="admin"
-                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-                >
-                  <Shield className="mb-3 h-6 w-6" />
-                  Admin
-                </Label>
-              </div>
-            </RadioGroup>
-            
-            <Button variant="default" className="w-full" onClick={handleLogin}>
-              <GoogleIcon/>
-              Sign in with Google
+            <Button variant="default" className="w-full" onClick={handleLogin} disabled={isLoggingIn}>
+              {isLoggingIn ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
+              {isLoggingIn ? "Signing in..." : "Sign in with Google"}
             </Button>
             
             <p className="px-8 text-center text-sm text-muted-foreground">
