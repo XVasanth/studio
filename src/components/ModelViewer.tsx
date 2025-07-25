@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from "react";
@@ -86,8 +87,7 @@ export default function ModelViewer({
              <Image 
                 src="https://placehold.co/600x400.png"
                 alt="3D Model Placeholder"
-                layout="fill"
-                objectFit="cover"
+                fill={true}
                 className="transition-transform duration-300 hover:scale-105"
                 data-ai-hint={dataAiHint}
               />
