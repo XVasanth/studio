@@ -15,7 +15,7 @@ const firebaseConfig = {
 // --- IMPORTANT ---
 // For this prototype, we're hardcoding the admin emails.
 // In a production app, you should use Firebase Custom Claims for role-based access control.
-const ADMIN_EMAILS = ['admin@cadcomparator.com', 'you@example.com'];
+const ADMIN_EMAILS = ['ajayvasanth@psgitech.ac.in', 'you@example.com'];
 
 // Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);

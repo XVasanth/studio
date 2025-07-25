@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DraftingCompass, User, Shield, Loader2 } from "lucide-react";
+import { DraftingCompass, User, Shield, Loader2, GraduationCap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signInWithPopup } from "firebase/auth";
 import { auth, provider, isAdmin } from "@/lib/firebase";
@@ -22,23 +22,36 @@ const GoogleIcon = () => (
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingInAs, setIsLoggingInAs] = useState<'student' | 'admin' | null>(null);
 
-  const handleLogin = async () => {
-    setIsLoggingIn(true);
+  const handleLogin = async (role: 'student' | 'admin') => {
+    setIsLoggingInAs(role);
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       
-      if (user && user.email) {
-        if (await isAdmin(user.email)) {
-          router.push('/');
-        } else {
-          router.push('/student');
-        }
-      } else {
-        throw new Error("Could not retrieve user information from Google.");
+      if (!user || !user.email) {
+          throw new Error("Could not retrieve user information from Google.");
       }
+      
+      const userIsAdmin = await isAdmin(user.email);
+
+      if (role === 'admin') {
+          if(userIsAdmin) {
+              router.push('/');
+          } else {
+              await auth.signOut(); // Sign out the unauthorized user
+              throw new Error("You are not authorized to access the admin panel.");
+          }
+      } else { // role === 'student'
+          if(userIsAdmin) {
+            // An admin can also log in as a student to see the student view
+            router.push('/student');
+          } else {
+            router.push('/student');
+          }
+      }
+
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -46,7 +59,7 @@ export default function LoginPage() {
         description: error.message || "An unexpected error occurred during login.",
       });
     } finally {
-        setIsLoggingIn(false);
+        setIsLoggingInAs(null);
     }
   };
 
@@ -64,13 +77,17 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-6">
-            <Button variant="default" className="w-full" onClick={handleLogin} disabled={isLoggingIn}>
-              {isLoggingIn ? <Loader2 className="animate-spin" /> : <GoogleIcon />}
-              {isLoggingIn ? "Signing in..." : "Sign in with Google"}
+          <div className="space-y-4">
+             <Button variant="outline" className="w-full" onClick={() => handleLogin('student')} disabled={!!isLoggingInAs}>
+              {isLoggingInAs === 'student' ? <Loader2 className="animate-spin" /> : <GraduationCap />}
+              {isLoggingInAs === 'student' ? "Signing in..." : "Student Login with Google"}
+            </Button>
+            <Button variant="default" className="w-full" onClick={() => handleLogin('admin')} disabled={!!isLoggingInAs}>
+              {isLoggingInAs === 'admin' ? <Loader2 className="animate-spin" /> : <Shield />}
+               {isLoggingInAs === 'admin' ? "Signing in..." : "Admin Login with Google"}
             </Button>
             
-            <p className="px-8 text-center text-sm text-muted-foreground">
+            <p className="px-8 text-center text-sm text-muted-foreground pt-4">
                 By clicking continue, you agree to our{" "}
                 <Link
                     href="#"
