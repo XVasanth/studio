@@ -20,10 +20,9 @@ import ModelViewer from "@/components/ModelViewer";
 import type { CadFile, ModelProperties } from "@/lib/types";
 import { Highlighter, Loader2, Bot, Percent } from "lucide-react";
 
-const initialProperties: ModelProperties = {
+const initialProperties: Omit<ModelProperties, 'dimensions'> = {
   volume: 0,
   surfaceArea: 0,
-  dimensions: { x: 0, y: 0, z: 0 },
   material: "N/A",
 };
 
@@ -34,10 +33,9 @@ const instructorBaseModel: CadFile = {
     dataUri: "data:application/octet-stream;base64,c2ltdWxhdGVkIGZpbGUgY29udGVudA==", // dummy data
 }
 
-const instructorBaseModelProperties: ModelProperties = {
+const instructorBaseModelProperties: Omit<ModelProperties, 'dimensions'> = {
   volume: 125000,
   surfaceArea: 15000,
-  dimensions: { x: 50, y: 50, z: 50 },
   material: "Aluminum 6061",
 };
 
@@ -45,8 +43,8 @@ const instructorBaseModelProperties: ModelProperties = {
 export default function StudentDashboardPage() {
   const [baseModel] = useState<CadFile | null>(instructorBaseModel);
   const [modifiedModel, setModifiedModel] = useState<CadFile | null>(null);
-  const [baseProperties] = useState<ModelProperties>(instructorBaseModelProperties);
-  const [modifiedProperties, setModifiedProperties] = useState<ModelProperties>(initialProperties);
+  const [baseProperties] = useState<Omit<ModelProperties, 'dimensions'>>(instructorBaseModelProperties);
+  const [modifiedProperties, setModifiedProperties] = useState<Omit<ModelProperties, 'dimensions'>>(initialProperties);
   const [report, setReport] = useState<string | null>(null);
   const [deviation, setDeviation] = useState<number | null>(null);
   const [showDifferences, setShowDifferences] = useState(false);
@@ -59,7 +57,6 @@ export default function StudentDashboardPage() {
     setModifiedProperties({
       volume: 128500,
       surfaceArea: 15500,
-      dimensions: { x: 50, y: 52, z: 50 },
       material: "Aluminum 6061",
     });
   };
@@ -99,10 +96,6 @@ export default function StudentDashboardPage() {
 
   const propertyDiffers = (key: keyof Omit<ModelProperties, 'dimensions' | 'material'>) => {
     return showDifferences && baseProperties[key] !== modifiedProperties[key];
-  }
-  
-  const dimensionDiffers = (axis: 'x' | 'y' | 'z') => {
-    return showDifferences && baseProperties.dimensions[axis] !== modifiedProperties.dimensions[axis];
   }
 
   return (
@@ -160,15 +153,6 @@ export default function StudentDashboardPage() {
                     <TableCell className="font-medium">Surface Area (mm²)</TableCell>
                     <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20")}>{baseProperties.surfaceArea.toLocaleString()}</TableCell>
                     <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20 text-accent-foreground font-bold")}>{modifiedProperties.surfaceArea.toLocaleString()}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">Dimensions (mm)</TableCell>
-                    <TableCell className={cn(dimensionDiffers('x') || dimensionDiffers('y') || dimensionDiffers('z') ? "bg-accent/20" : "")}>
-                      {`X:${baseProperties.dimensions.x}, Y:${baseProperties.dimensions.y}, Z:${baseProperties.dimensions.z}`}
-                    </TableCell>
-                    <TableCell className={cn(dimensionDiffers('x') || dimensionDiffers('y') || dimensionDiffers('z') ? "bg-accent/20 text-accent-foreground font-bold" : "")}>
-                      {`X:${modifiedProperties.dimensions.x}, Y:${modifiedProperties.dimensions.y}, Z:${modifiedProperties.dimensions.z}`}
-                    </TableCell>
                   </TableRow>
                    <TableRow>
                     <TableCell className="font-medium">Material</TableCell>
