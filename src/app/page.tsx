@@ -19,6 +19,10 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { GitCompareArrows, CheckCircle2, XCircle, Users, BarChart3, FileUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth, isAdmin } from "@/lib/firebase";
+import { useEffect } from "react";
 
 // Mock Data
 const mockSubmissions = [
@@ -31,6 +35,25 @@ const mockSubmissions = [
 
 
 export default function AdminDashboardPage() {
+  const [user, loading, error] = useAuthState(auth);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return; // Wait until loading is done
+    if (!user) {
+      router.push('/login'); // If no user, redirect to login
+      return;
+    }
+    const checkAdmin = async () => {
+        const userIsAdmin = await isAdmin(user.email);
+        if (!userIsAdmin) {
+            router.push('/student'); // If user is not admin, redirect to student page
+        }
+    }
+    checkAdmin();
+  }, [user, loading, router]);
+
+
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex items-center gap-2 mb-6">

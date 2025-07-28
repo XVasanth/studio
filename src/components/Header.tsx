@@ -36,7 +36,9 @@ export function Header() {
             setUserRole(null);
         }
     };
-    checkUserRole();
+    if (user) {
+        checkUserRole();
+    }
   }, [user]);
 
   const handleLogout = async () => {
@@ -46,14 +48,14 @@ export function Header() {
 
   const navLinks = [
     { href: "/", label: "Admin Dashboard", icon: LayoutDashboard, role: 'admin' },
-    { href: "/admin", label: "Plagiarism Check", icon: ShieldCheck, role: 'admin' },
+    { href: "/admin", label: "Admin Tools", icon: ShieldCheck, role: 'admin' },
     { href: "/student", label: "My Dashboard", icon: GraduationCap, role: 'student' },
   ];
 
   const filteredNavLinks = navLinks.filter(link => link.role === userRole);
   
   // Don't render header on login page
-  if (pathname === '/login') return null;
+  if (pathname === '/login' || loading) return null;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -78,33 +80,35 @@ export function Header() {
           ))}
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-9 w-9">
-                  <AvatarImage src={user?.photoURL ?? undefined} alt="User Avatar" />
-                  <AvatarFallback>
-                    <User />
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{user?.displayName ?? 'User'}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
-                    {user?.email ?? 'No email'}
-                  </p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.photoURL ?? undefined} alt="User Avatar" />
+                      <AvatarFallback>
+                        <User />
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.displayName ?? 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email ?? 'No email'}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
         </div>
       </div>
     </header>
