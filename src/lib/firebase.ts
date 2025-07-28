@@ -3,13 +3,14 @@ import { initializeApp, getApp, getApps } from "firebase/app";
 import { getStorage } from "firebase/storage";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
+// Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id"
+  apiKey: "AIzaSyBBKlcHaUnzS13C3YDTjhcfr1IftgRXXt0",
+  authDomain: "cad-comparator.firebaseapp.com",
+  projectId: "cad-comparator",
+  storageBucket: "cad-comparator.firebasestorage.app",
+  messagingSenderId: "185419698184",
+  appId: "1:185419698184:web:a9db6f767e879da01a41bd"
 };
 
 // --- IMPORTANT ---
