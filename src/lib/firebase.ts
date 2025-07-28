@@ -13,9 +13,9 @@ const firebaseConfig = {
 };
 
 // --- IMPORTANT ---
-// For this prototype, we're hardcoding the admin emails.
-// In a production app, you should use Firebase Custom Claims for role-based access control.
-const ADMIN_EMAILS = ['ajayvasanth@psgitech.ac.in', 'you@example.com'];
+// This is the single email address that will have admin access.
+// You must add this user in the Firebase Authentication console and set a password for them.
+const ADMIN_EMAIL = 'ajayvasanth@psgitech.ac.in';
 
 // Initialize Firebase
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
@@ -24,14 +24,14 @@ const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
 /**
- * Checks if a user's email is in the list of admin emails.
+ * Checks if a user's email is the designated admin email.
  * @param email The user's email address.
- * @returns A boolean indicating if the user is an admin.
+ * @returns A boolean indicating if the user is the admin.
  */
 const isAdmin = async (email: string | null): Promise<boolean> => {
     if (!email) return false;
-    return ADMIN_EMAILS.includes(email);
+    return email === ADMIN_EMAIL;
 };
 
 
-export { app, storage, auth, provider, isAdmin };
+export { app, storage, auth, provider, isAdmin, ADMIN_EMAIL };
