@@ -33,18 +33,16 @@ export function Header() {
   }, []);
 
   useEffect(() => {
-    if (!isMounted) return;
-
-    const checkUserRole = async () => {
-        if (user && user.email) {
-            const admin = await isAdmin(user.email);
-            setUserRole(admin ? 'admin' : 'student');
-        } else if (!user && !loading) {
-            setUserRole(null);
-        }
-    };
-    checkUserRole();
-  }, [user, loading, isMounted]);
+    if (user && user.email) {
+      const checkUserRole = async () => {
+        const admin = await isAdmin(user.email);
+        setUserRole(admin ? 'admin' : 'student');
+      };
+      checkUserRole();
+    } else if (!user && !loading) {
+      setUserRole(null);
+    }
+  }, [user, loading]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -56,12 +54,26 @@ export function Header() {
     { href: "/admin", label: "Admin Tools", icon: ShieldCheck, role: 'admin' },
     { href: "/student", label: "My Dashboard", icon: GraduationCap, role: 'student' },
   ];
+  
+  const filteredNavLinks = navLinks.filter(link => link.role === userRole);
 
-  if (!isMounted || loading || pathname === '/login' || !userRole) {
-    return null;
+  if (!isMounted || loading || pathname === '/login') {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container flex h-16 items-center">
+           <Link href="#" className="mr-8 flex items-center space-x-2">
+              <DraftingCompass className="h-6 w-6 text-primary" />
+              <span className="font-bold text-lg">CAD Comparator</span>
+            </Link>
+        </div>
+      </header>
+    );
+  }
+  
+  if (!user) {
+      return null;
   }
 
-  const filteredNavLinks = navLinks.filter(link => link.role === userRole);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
