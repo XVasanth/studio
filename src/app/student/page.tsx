@@ -19,7 +19,7 @@ import { generateComparisonReportAction, uploadFileToStorage } from "@/lib/actio
 import { cn } from "@/lib/utils";
 import ModelViewer from "@/components/ModelViewer";
 import type { CadFile, ModelProperties } from "@/lib/types";
-import { Highlighter, Loader2, Bot, Percent, TestTube } from "lucide-react";
+import { Highlighter, Loader2, Bot, Percent, TestTube, Lightbulb } from "lucide-react";
 
 const initialProperties: Omit<ModelProperties, 'dimensions'> = {
   volume: 0,
@@ -49,6 +49,7 @@ export default function StudentDashboardPage() {
   const [baseProperties] = useState<Omit<ModelProperties, 'dimensions'>>(instructorBaseModelProperties);
   const [modifiedProperties, setModifiedProperties] = useState<Omit<ModelProperties, 'dimensions'>>(initialProperties);
   const [report, setReport] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [deviation, setDeviation] = useState<number | null>(null);
   const [showDifferences, setShowDifferences] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -61,6 +62,7 @@ export default function StudentDashboardPage() {
         setModifiedModel(null);
         setReport(null);
         setDeviation(null);
+        setSuggestions(null);
         setModifiedProperties(initialProperties);
     }
   }, [selectedExperiment]);
@@ -120,6 +122,7 @@ export default function StudentDashboardPage() {
       } else {
         setReport(result.report ?? "No report was generated.");
         setDeviation(result.deviationPercentage ?? 0);
+        setSuggestions(result.suggestions ?? []);
         toast({
           title: "Success",
           description: "Comparison report generated successfully.",
@@ -191,9 +194,10 @@ export default function StudentDashboardPage() {
                 </CardHeader>
                 <CardContent>
                 <Tabs defaultValue="properties">
-                    <TabsList>
-                    <TabsTrigger value="properties">Properties</TabsTrigger>
-                    <TabsTrigger value="report">Comparison Report</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-3">
+                        <TabsTrigger value="properties">Properties</TabsTrigger>
+                        <TabsTrigger value="report">Comparison Report</TabsTrigger>
+                        <TabsTrigger value="suggestions">AI Suggestions</TabsTrigger>
                     </TabsList>
                     <TabsContent value="properties" className="mt-4">
                     <Table>
@@ -224,41 +228,74 @@ export default function StudentDashboardPage() {
                     </Table>
                     </TabsContent>
                     <TabsContent value="report" className="mt-4">
-                    <div className="flex flex-col space-y-4">
-                        <Button onClick={handleGenerateReport} disabled={isPending || !baseModel || !modifiedModel}>
-                        {isPending ? (
-                            <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating...
-                            </>
-                        ) : (
-                            "Generate Report"
-                        )}
-                        </Button>
-                        {report && (
-                        <Card className="bg-secondary/50 p-4">
-                            <CardHeader className="p-2 flex-row justify-between items-start">
-                                <div className="flex-grow">
-                                    <CardTitle className="text-lg flex items-center gap-2">
-                                        <Bot className="w-6 h-6 text-primary"/>
-                                        AI Comparison Report
-                                    </CardTitle>
-                                </div>
-                                {deviation !== null && (
-                                    <div className="flex items-center gap-2 text-lg font-bold text-accent-foreground p-2 bg-accent/20 rounded-lg">
-                                        <Percent className="w-5 h-5"/>
-                                        <span>{deviation.toFixed(2)}% Deviation</span>
-                                    </div>
+                        <div className="flex flex-col space-y-4">
+                            {!report && (
+                                <Button onClick={handleGenerateReport} disabled={isPending || !baseModel || !modifiedModel}>
+                                {isPending ? (
+                                    <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                    </>
+                                ) : (
+                                    "Generate Report & Suggestions"
                                 )}
-                            </CardHeader>
-                            <CardContent className="p-2">
-                                <div className="prose prose-sm max-w-none text-foreground">
-                                    {report.split('\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
-                                </div>
-                            </CardContent>
-                        </Card>
-                        )}
-                    </div>
+                                </Button>
+                            )}
+                            {report && (
+                            <Card className="bg-secondary/50 p-4">
+                                <CardHeader className="p-2 flex-row justify-between items-start">
+                                    <div className="flex-grow">
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Bot className="w-6 h-6 text-primary"/>
+                                            AI Comparison Report
+                                        </CardTitle>
+                                    </div>
+                                    {deviation !== null && (
+                                        <div className="flex items-center gap-2 text-lg font-bold text-accent-foreground p-2 bg-accent/20 rounded-lg">
+                                            <Percent className="w-5 h-5"/>
+                                            <span>{deviation.toFixed(2)}% Deviation</span>
+                                        </div>
+                                    )}
+                                </CardHeader>
+                                <CardContent className="p-2">
+                                    <div className="prose prose-sm max-w-none text-foreground">
+                                        {report.split('\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            )}
+                        </div>
+                    </TabsContent>
+                    <TabsContent value="suggestions" className="mt-4">
+                         <div className="flex flex-col space-y-4">
+                             {!suggestions && (
+                                <Button onClick={handleGenerateReport} disabled={isPending || !baseModel || !modifiedModel}>
+                                {isPending ? (
+                                    <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                    </>
+                                ) : (
+                                    "Generate Report & Suggestions"
+                                )}
+                                </Button>
+                             )}
+                            {suggestions && (
+                                <Card className="bg-secondary/50 p-4">
+                                <CardHeader className="p-2">
+                                     <CardTitle className="text-lg flex items-center gap-2">
+                                        <Lightbulb className="w-6 h-6 text-primary"/>
+                                        AI Suggestions for Improvement
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-2">
+                                    <ul className="list-disc pl-5 space-y-2 text-foreground">
+                                        {suggestions.map((suggestion, index) => <li key={index}>{suggestion}</li>)}
+                                    </ul>
+                                </CardContent>
+                                </Card>
+                            )}
+                        </div>
                     </TabsContent>
                 </Tabs>
                 </CardContent>
