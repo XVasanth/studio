@@ -40,8 +40,12 @@ export default function LoginPage() {
           throw new Error("Could not retrieve user information from Google.");
       }
       
-      // All non-admin users are students
-      router.push('/student');
+      const userIsAdmin = await isAdmin(user.email);
+      if (userIsAdmin) {
+        router.push('/');
+      } else {
+        router.push('/student');
+      }
 
     } catch (error: any) {
       toast({
