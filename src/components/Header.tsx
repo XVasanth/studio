@@ -26,8 +26,15 @@ export function Header() {
   const router = useRouter();
   const [user, loading, error] = useAuthState(auth);
   const [userRole, setUserRole] = useState<'admin' | 'student' | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const checkUserRole = async () => {
         if (user && user.email) {
             const admin = await isAdmin(user.email);
@@ -37,7 +44,7 @@ export function Header() {
         }
     };
     checkUserRole();
-  }, [user, loading]);
+  }, [user, loading, isMounted]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -50,11 +57,9 @@ export function Header() {
     { href: "/student", label: "My Dashboard", icon: GraduationCap, role: 'student' },
   ];
 
-  // Don't render anything on login page or while the user's auth state is loading
-  if (pathname === '/login' || loading) return null;
-
-  // Wait until the user role is determined on the client to render the full header
-  if (!userRole) return null; 
+  if (!isMounted || loading || pathname === '/login' || !userRole) {
+    return null;
+  }
 
   const filteredNavLinks = navLinks.filter(link => link.role === userRole);
 
