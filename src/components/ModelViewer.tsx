@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { UploadCloud, File, RefreshCw, Info } from "lucide-react";
+import { UploadCloud, File, RefreshCw, Info, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { CadFile } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,6 +17,8 @@ interface ModelViewerProps {
   onFileUpload?: (file: CadFile) => void;
   highlight: boolean;
   'data-ai-hint'?: string;
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export default function ModelViewer({
@@ -24,7 +26,9 @@ export default function ModelViewer({
   file,
   onFileUpload,
   highlight,
-  'data-ai-hint': dataAiHint
+  'data-ai-hint': dataAiHint,
+  isLoading = false,
+  disabled = false,
 }: ModelViewerProps) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -64,11 +68,67 @@ export default function ModelViewer({
     if(fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="w-full aspect-video bg-muted/30 rounded-lg flex flex-col items-center justify-center text-center p-4">
+            <Loader2 className="w-12 h-12 text-muted-foreground animate-spin mb-4" />
+            <p className="text-sm text-muted-foreground">Fetching base model...</p>
+        </div>
+      );
+    }
+    
+    if (file && file.dataUri) {
+      return (
+         <div className="w-full aspect-video bg-secondary/50 rounded-lg overflow-hidden relative border">
+             <Image 
+                src="https://placehold.co/600x400.png"
+                alt="3D Model Placeholder"
+                fill={true}
+                className="transition-transform duration-300 hover:scale-105"
+                data-ai-hint={dataAiHint}
+              />
+          </div>
+      );
+    }
+    
+    return (
+        <div className="w-full aspect-video bg-muted/30 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center p-4">
+            <Input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              accept=".step,.stp"
+              disabled={!onFileUpload || disabled}
+            />
+            {onFileUpload ? (
+                <>
+                <UploadCloud className={cn("w-12 h-12 text-muted-foreground mb-4", disabled && "text-muted-foreground/50")} />
+                <p className="text-sm text-muted-foreground mb-2">
+                 {disabled ? "First, select an experiment with a base model." : "Drag & drop a STEP file here, or click to upload"}
+                </p>
+                <Button onClick={handleUploadClick} disabled={disabled}>
+                    Upload File
+                </Button>
+                </>
+            ) : (
+                <>
+                <Info className="w-12 h-12 text-muted-foreground mb-4" />
+                <p className="text-sm text-muted-foreground">
+                    The base model is provided by your instructor.
+                </p>
+                </>
+            )}
+        </div>
+    );
+  }
 
   return (
     <Card className={cn(
         "flex flex-col transition-all duration-300 w-full",
-        highlight && "ring-2 ring-accent shadow-accent/50 shadow-lg"
+        highlight && "ring-2 ring-accent shadow-accent/50 shadow-lg",
+        disabled && "bg-muted/50"
       )}>
       <CardHeader>
         <div className="flex justify-between items-center">
@@ -84,46 +144,7 @@ export default function ModelViewer({
         )}
       </CardHeader>
       <CardContent className="flex-grow flex flex-col items-center justify-center">
-        {file && file.dataUri ? (
-          <div className="w-full aspect-video bg-secondary/50 rounded-lg overflow-hidden relative border">
-             <Image 
-                src="https://placehold.co/600x400.png"
-                alt="3D Model Placeholder"
-                fill={true}
-                className="transition-transform duration-300 hover:scale-105"
-                data-ai-hint={dataAiHint}
-              />
-          </div>
-        ) : (
-          <div className="w-full aspect-video bg-muted/30 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center p-4">
-            <Input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-              accept=".step,.stp"
-              disabled={!onFileUpload}
-            />
-            {onFileUpload ? (
-                <>
-                <UploadCloud className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground mb-2">
-                Drag & drop a STEP file here, or click to upload
-                </p>
-                <Button onClick={handleUploadClick}>
-                Upload File
-                </Button>
-                </>
-            ) : (
-                <>
-                <Info className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-sm text-muted-foreground">
-                    The base model is provided by your instructor.
-                </p>
-                </>
-            )}
-          </div>
-        )}
+        {renderContent()}
       </CardContent>
     </Card>
   );

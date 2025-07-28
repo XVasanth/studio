@@ -15,24 +15,17 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { generateComparisonReportAction, uploadFileToStorage } from "@/lib/actions";
+import { generateComparisonReportAction, uploadFileToStorage, getBaseModelForExperiment } from "@/lib/actions";
 import { cn } from "@/lib/utils";
 import ModelViewer from "@/components/ModelViewer";
 import type { CadFile, ModelProperties } from "@/lib/types";
-import { Highlighter, Loader2, Bot, Percent, TestTube } from "lucide-react";
+import { Highlighter, Loader2, Bot, Percent, TestTube, Info } from "lucide-react";
 
 const initialProperties: Omit<ModelProperties, 'dimensions'> = {
   volume: 0,
   surfaceArea: 0,
   material: "N/A",
 };
-
-// Simulate a pre-loaded base model from the instructor
-const getInstructorBaseModel = (experiment: string): CadFile => ({
-    name: `base-model-experiment-${experiment}.step`,
-    size: 128000,
-    dataUri: "data:application/octet-stream;base64,c2ltdWxhdGVkIGZpbGUgY29udGVudA==", // dummy data
-});
 
 const instructorBaseModelProperties: Omit<ModelProperties, 'dimensions'> = {
   volume: 125000,
@@ -52,18 +45,34 @@ export default function StudentDashboardPage() {
   const [deviation, setDeviation] = useState<number | null>(null);
   const [showDifferences, setShowDifferences] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [isFetchingBaseModel, setIsFetchingBaseModel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     if (selectedExperiment) {
-        setBaseModel(getInstructorBaseModel(selectedExperiment));
         // Reset dependant state when experiment changes
         setModifiedModel(null);
         setReport(null);
         setDeviation(null);
         setModifiedProperties(initialProperties);
+        setBaseModel(null);
+        
+        setIsFetchingBaseModel(true);
+        startTransition(async () => {
+            const model = await getBaseModelForExperiment(selectedExperiment);
+            if (model) {
+                setBaseModel(model);
+            } else {
+                 toast({
+                    variant: "destructive",
+                    title: "Base Model Not Found",
+                    description: `The instructor has not uploaded a base model for Experiment ${selectedExperiment} yet.`,
+                });
+            }
+            setIsFetchingBaseModel(false);
+        });
     }
-  }, [selectedExperiment]);
+  }, [selectedExperiment, toast]);
 
 
   const handleModifiedModelUpload = async (file: CadFile) => {
@@ -165,6 +174,7 @@ export default function StudentDashboardPage() {
                     file={baseModel}
                     highlight={false}
                     data-ai-hint="cad base model"
+                    isLoading={isFetchingBaseModel}
                 />
                 <ModelViewer
                     title="Your Model Submission"
@@ -172,6 +182,7 @@ export default function StudentDashboardPage() {
                     file={modifiedModel}
                     highlight={showDifferences && !!baseModel}
                     data-ai-hint="3d model render"
+                    disabled={!baseModel}
                 />
             </div>
 
@@ -196,32 +207,38 @@ export default function StudentDashboardPage() {
                         <TabsTrigger value="report">Comparison Report</TabsTrigger>
                     </TabsList>
                     <TabsContent value="properties" className="mt-4">
-                    <Table>
-                        <TableHeader>
-                        <TableRow>
-                            <TableHead>Property</TableHead>
-                            <TableHead>Base Model</TableHead>
-                            <TableHead>Your Model</TableHead>
-                        </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                        <TableRow>
-                            <TableCell className="font-medium">Volume (mm³)</TableCell>
-                            <TableCell className={cn(propertyDiffers('volume') && "bg-accent/20")}>{baseProperties.volume.toLocaleString()}</TableCell>
-                            <TableCell className={cn(propertyDiffers('volume') && "bg-accent/20 text-accent-foreground font-bold")}>{modifiedProperties.volume.toLocaleString()}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                            <TableCell className="font-medium">Surface Area (mm²)</TableCell>
-                            <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20")}>{baseProperties.surfaceArea.toLocaleString()}</TableCell>
-                            <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20 text-accent-foreground font-bold")}>{modifiedProperties.surfaceArea.toLocaleString()}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                            <TableCell className="font-medium">Material</TableCell>
-                            <TableCell>{baseProperties.material}</TableCell>
-                            <TableCell>{modifiedProperties.material}</TableCell>
-                        </TableRow>
-                        </TableBody>
-                    </Table>
+                     {!baseModel ? (
+                         <div className="flex items-center justify-center p-8 text-muted-foreground">
+                            <Info className="mr-2" /> Select an experiment with a base model to see properties.
+                         </div>
+                     ) : (
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead>Property</TableHead>
+                                <TableHead>Base Model</TableHead>
+                                <TableHead>Your Model</TableHead>
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            <TableRow>
+                                <TableCell className="font-medium">Volume (mm³)</TableCell>
+                                <TableCell className={cn(propertyDiffers('volume') && "bg-accent/20")}>{baseProperties.volume.toLocaleString()}</TableCell>
+                                <TableCell className={cn(propertyDiffers('volume') && "bg-accent/20 text-accent-foreground font-bold")}>{modifiedModel ? modifiedProperties.volume.toLocaleString() : '---'}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium">Surface Area (mm²)</TableCell>
+                                <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20")}>{baseProperties.surfaceArea.toLocaleString()}</TableCell>
+                                <TableCell className={cn(propertyDiffers('surfaceArea') && "bg-accent/20 text-accent-foreground font-bold")}>{modifiedModel ? modifiedProperties.surfaceArea.toLocaleString() : '---'}</TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium">Material</TableCell>
+                                <TableCell>{baseProperties.material}</TableCell>
+                                <TableCell>{modifiedModel ? modifiedProperties.material : '---'}</TableCell>
+                            </TableRow>
+                            </TableBody>
+                        </Table>
+                     )}
                     </TabsContent>
                     <TabsContent value="report" className="mt-4">
                         <div className="flex flex-col space-y-4">
@@ -255,7 +272,8 @@ export default function StudentDashboardPage() {
                                 </CardHeader>
                                 <CardContent className="p-2">
                                     <div className="prose prose-sm max-w-none text-foreground">
-                                        {report.split('\n').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
+                                        {report.split('
+').map((paragraph, index) => <p key={index}>{paragraph}</p>)}
                                     </div>
                                 </CardContent>
                             </Card>

@@ -31,7 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { checkCadPlagiarismAction, uploadFileToStorage } from "@/lib/actions";
 import type { CadFile, PlagiarismFlag, BackupFile } from "@/lib/types";
-import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock, TestTube } from "lucide-react";
+import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock, TestTube, Upload } from "lucide-react";
 
 // Mock data for backup files
 const mockBackups: BackupFile[] = [
@@ -48,6 +48,10 @@ export default function AdminPage() {
   const [selectedExperiment, setSelectedExperiment] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  
+  const [baseModelFile, setBaseModelFile] = useState<CadFile | null>(null);
+  const [selectedExpForUpload, setSelectedExpForUpload] = useState<string>("");
+
 
   const handleFileSelect =
     (setter: React.Dispatch<React.SetStateAction<any>>, isMultiple: boolean) =>
@@ -96,6 +100,35 @@ export default function AdminPage() {
         setter(processedFiles[0]);
       }
     };
+    
+  const handleBaseModelUpload = () => {
+    if (!selectedExpForUpload) {
+        toast({ variant: "destructive", title: "Experiment Required", description: "Please select an experiment for the base model." });
+        return;
+    }
+    if (!baseModelFile || !baseModelFile.dataUri) {
+        toast({ variant: "destructive", title: "File Required", description: "Please choose a STEP file to upload." });
+        return;
+    }
+
+    startTransition(async () => {
+        try {
+            const path = `base-models/exp-${selectedExpForUpload}/base-model.step`;
+            await uploadFileToStorage(baseModelFile.dataUri, path);
+            toast({
+                title: "Base Model Uploaded",
+                description: `Successfully uploaded base model for Experiment ${selectedExpForUpload}.`,
+            });
+            setBaseModelFile(null); // Clear file after upload
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Upload Failed",
+                description: (error as Error).message,
+            });
+        }
+    });
+  };
 
   const runPlagiarismCheck = () => {
     if (!selectedExperiment) {
@@ -142,11 +175,11 @@ export default function AdminPage() {
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex items-center gap-2 mb-6">
         <Shield className="w-8 h-8 text-primary" />
-        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <h1 className="text-3xl font-bold">Admin Tools</h1>
       </div>
       
-      <div className="grid gap-8 lg:grid-cols-2">
-        <Card className="shadow-lg">
+      <div className="grid gap-8 lg:grid-cols-3">
+        <Card className="shadow-lg lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><GitCompareArrows/> Plagiarism Checker</CardTitle>
             <CardDescription>
@@ -176,7 +209,7 @@ export default function AdminPage() {
                {checkFiles.length > 0 && <p className="text-sm text-muted-foreground pt-1">Loaded {checkFiles.length} file(s)</p>}
             </div>
             <Button onClick={runPlagiarismCheck} disabled={isPending || !selectedExperiment} className="w-full">
-              {isPending ? <Loader2 className="animate-spin mr-2" /> : <FileText className="mr-2" />}
+              {isPending && flags.length === 0 ? <Loader2 className="animate-spin mr-2" /> : <FileText className="mr-2" />}
               Run Check
             </Button>
 
@@ -206,34 +239,68 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         
-        <Card className="shadow-lg">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><FileClock/> Admin File Backup</CardTitle>
-                <CardDescription>
-                A log of all files that have been processed and backed up.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>File Name</TableHead>
-                        <TableHead>Timestamp</TableHead>
-                        <TableHead>Checked By</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {mockBackups.map((backup) => (
-                        <TableRow key={backup.id}>
-                            <TableCell className="font-medium">{backup.name}</TableCell>
-                            <TableCell>{backup.timestamp}</TableCell>
-                            <TableCell>{backup.checkedBy}</TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
+        <div className="space-y-8">
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><UploadCloud/> Upload Base Model</CardTitle>
+                    <CardDescription>Upload the master STEP file for an experiment.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="experiment-select-upload">Experiment Number</Label>
+                        <Select onValueChange={setSelectedExpForUpload} value={selectedExpForUpload}>
+                            <SelectTrigger id="experiment-select-upload">
+                                <div className="flex items-center gap-2">
+                                    <TestTube className="w-4 h-4 text-muted-foreground"/>
+                                    <SelectValue placeholder="Select an experiment..." />
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                {experiments.map((exp) => (
+                                    <SelectItem key={exp} value={exp}>Experiment {exp}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Base Model File</Label>
+                        <Input type="file" onChange={handleFileSelect(setBaseModelFile, false)} className="file:text-primary file:font-semibold" disabled={!selectedExpForUpload} accept=".step,.stp"/>
+                        {baseModelFile && <p className="text-sm text-muted-foreground pt-1 truncate">Loaded: {baseModelFile.name}</p>}
+                    </div>
+                    <Button onClick={handleBaseModelUpload} disabled={isPending || !selectedExpForUpload || !baseModelFile} className="w-full">
+                        {isPending && baseModelFile ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
+                        Upload Base Model
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <Card className="shadow-lg">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><FileClock/> File Backup Log</CardTitle>
+                    <CardDescription>A log of all student files that have been backed up.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>File Name</TableHead>
+                            <TableHead>Timestamp</TableHead>
+                            <TableHead>Checked By</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {mockBackups.map((backup) => (
+                            <TableRow key={backup.id}>
+                                <TableCell className="font-medium">{backup.name}</TableCell>
+                                <TableCell>{backup.timestamp}</TableCell>
+                                <TableCell>{backup.checkedBy}</TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
       </div>
     </div>
   );
