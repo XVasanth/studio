@@ -22,7 +22,7 @@ const GenerateComparisonReportInputSchema = z.object({
   modifiedModelDataUri: z
     .string()
     .describe(
-      "The modified CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
+      "The modified/student's CAD model STEP file as a data URI that must include a MIME type and use Base64 encoding. Expected format: 'data:<mimetype>;base64,<encoded_data>'."
     ),
 });
 export type GenerateComparisonReportInput = z.infer<
@@ -33,7 +33,7 @@ const GenerateComparisonReportOutputSchema = z.object({
   report: z
     .string()
     .describe(
-      'A report summarizing the key differences between the two CAD models. This should also include actionable suggestions for the student to improve their model, framed as helpful advice.'
+      'A detailed report summarizing the key geometric and property differences between the two CAD models. This should be written in markdown format. It must include actionable suggestions for the student to improve their model, framed as helpful advice.'
     ),
   deviationPercentage: z
     .number()
@@ -56,13 +56,13 @@ const generateComparisonReportPrompt = ai.definePrompt({
   model: googleAI.model('gemini-2.0-flash'),
   prompt: `You are an expert CAD model comparison tool and a helpful engineering tutor. You will analyze two STEP files to identify differences and provide constructive feedback.
   
-1.  **Analyze Deviation**: Compare the student's model to the base model. Calculate a deviation percentage based on metrics like Hausdorff distance, volume difference, and surface area changes.
-2.  **Generate Comprehensive Report**: Summarize the key geometric and property differences. At the end of the report, include a section with clear, actionable suggestions for the student to improve their model. Frame these suggestions as helpful advice (e.g., "Consider adjusting...", "Review the dimensions of...", "Check if you have included...").
+1.  **Analyze Deviation**: Compare the student's model to the base model. Calculate a single, overall deviation percentage based on a holistic analysis of geometric differences (like Hausdorff distance, volume difference, surface area changes) and any changes in properties.
+2.  **Generate Comprehensive Report**: Write a detailed report in Markdown format. Start with a summary of the findings. Then, list the key geometric and property differences you found. Conclude the report with a section titled "## Improvement Suggestions" that provides clear, actionable advice for the student to improve their model (e.g., "Consider adjusting...", "Review the dimensions of...", "Check if you have included...").
 
 Base Model: {{media url=baseModelDataUri}}
-Modified Model: {{media url=modifiedModelDataUri}}
+Student's Model: {{media url=modifiedModelDataUri}}
 
-Output a JSON object with the deviation percentage and a detailed report that includes improvement suggestions.
+Output a JSON object with the calculated deviation percentage and the detailed markdown report.
 `,
 });
 

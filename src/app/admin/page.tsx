@@ -20,89 +20,47 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { checkCadPlagiarismAction, uploadFileToStorage } from "@/lib/actions";
-import type { CadFile, PlagiarismFlag, BackupFile } from "@/lib/types";
-import { UploadCloud, FileText, Loader2, GitCompareArrows, CheckCircle2, XCircle, Shield, FileClock, TestTube, Upload } from "lucide-react";
+import { uploadFileToStorage } from "@/lib/actions";
+import type { CadFile } from "@/lib/types";
+import { UploadCloud, Loader2, TestTube, Download, BarChart3, Users } from "lucide-react";
 
-// Mock data for backup files
-const mockBackups: BackupFile[] = [
-    { id: 'bck_001', name: 'vortex-engine-v1.step', timestamp: '2023-10-27 14:30 UTC', reportUrl: '#', checkedBy: 'admin@cad.com' },
-    { id: 'bck_002', name: 'suspension-assembly-rev2.step', timestamp: '2023-10-26 11:00 UTC', reportUrl: '#', checkedBy: 'admin@cad.com' },
-    { id: 'bck_003', name: 'gearbox-housing-final.step', timestamp: '2023-10-25 09:15 UTC', reportUrl: '#', checkedBy: 'admin@cad.com' },
+// Mock data for student submissions - this would be fetched from your database
+const mockSubmissions = [
+  { studentId: "user_1", studentName: "Alice Johnson", fileName: "project-v1.step", deviation: 2.1, reportUrl: "#" },
+  { studentId: "user_2", studentName: "Bob Williams", fileName: "design-final.step", deviation: 12.5, reportUrl: "#" },
+  { studentId: "user_3", studentName: "Charlie Brown", fileName: "assembly-rev2.step", deviation: 4.8, reportUrl: "#" },
 ];
 
 const experiments = Array.from({ length: 20 }, (_, i) => (i + 1).toString());
 
 export default function AdminPage() {
-  const [checkFiles, setCheckFiles] = useState<CadFile[]>([]);
-  const [flags, setFlags] = useState<PlagiarismFlag[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<string>("");
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   
   const [baseModelFile, setBaseModelFile] = useState<CadFile | null>(null);
-  const [selectedExpForUpload, setSelectedExpForUpload] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
+  const handleBaseModelSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const handleFileSelect =
-    (setter: React.Dispatch<React.SetStateAction<any>>, isMultiple: boolean) =>
-    async (event: React.ChangeEvent<HTMLInputElement>) => {
-      const files = event.target.files;
-      if (!files) return;
-
-      const fileList = Array.from(files);
-      const processedFiles: CadFile[] = await Promise.all(
-        fileList.map(
-          (file) =>
-            new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                resolve({
-                  name: file.name,
-                  size: file.size,
-                  dataUri: e.target?.result as string,
-                });
-              };
-              reader.readAsDataURL(file);
-            })
-        )
-      );
-
-      if (isMultiple) {
-        setter((prev: CadFile[]) => [...prev, ...processedFiles]);
-        startTransition(async () => {
-          for (const file of processedFiles) {
-            try {
-              const downloadUrl = await uploadFileToStorage(file.dataUri, `admins/exp-${selectedExperiment}/${file.name}`);
-              toast({
-                  title: "File uploaded successfully",
-                  description: `File ${file.name} is saved.`,
-              });
-            } catch (error) {
-               toast({
-                    variant: "destructive",
-                    title: "File upload failed",
-                    description: (error as Error).message,
-                });
-            }
-          }
-        });
-      } else {
-        setter(processedFiles[0]);
-      }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setBaseModelFile({
+        name: file.name,
+        size: file.size,
+        dataUri: e.target?.result as string,
+      });
     };
+    reader.readAsDataURL(file);
+  };
     
   const handleBaseModelUpload = () => {
-    if (!selectedExpForUpload) {
+    if (!selectedExperiment) {
         toast({ variant: "destructive", title: "Experiment Required", description: "Please select an experiment for the base model." });
         return;
     }
@@ -111,13 +69,14 @@ export default function AdminPage() {
         return;
     }
 
+    setIsUploading(true);
     startTransition(async () => {
         try {
-            const path = `base-models/exp-${selectedExpForUpload}/base-model.step`;
+            const path = `base-models/exp-${selectedExperiment}/base-model.step`;
             await uploadFileToStorage(baseModelFile.dataUri, path);
             toast({
                 title: "Base Model Uploaded",
-                description: `Successfully uploaded base model for Experiment ${selectedExpForUpload}.`,
+                description: `Successfully uploaded base model for Experiment ${selectedExperiment}.`,
             });
             setBaseModelFile(null); // Clear file after upload
         } catch (error) {
@@ -126,120 +85,38 @@ export default function AdminPage() {
                 title: "Upload Failed",
                 description: (error as Error).message,
             });
+        } finally {
+            setIsUploading(false);
         }
     });
   };
 
-  const runPlagiarismCheck = () => {
+  const handleRunChecks = () => {
     if (!selectedExperiment) {
-        toast({
-            variant: "destructive",
-            title: "Experiment Required",
-            description: "Please select an experiment before running the check.",
-        });
+        toast({ variant: "destructive", title: "Experiment Required", description: "Please select an experiment to run checks on." });
         return;
     }
-    if (checkFiles.length < 2) {
-      toast({
-        variant: "destructive",
-        title: "Files Required",
-        description: "Please upload at least two files to check for plagiarism.",
-      });
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await checkCadPlagiarismAction({
-        uploadedFileDataUris: checkFiles.map((f) => f.dataUri),
-      });
-
-      if (result.error) {
-        toast({
-          variant: "destructive",
-          title: "Plagiarism Check Failed",
-          description: result.error,
-        });
-        setFlags([]);
-      } else {
-        // The file names now come from the backend to ensure consistency
-        setFlags(result.plagiarismFlags);
-        toast({
-          title: "Success",
-          description: `Plagiarism check completed for Experiment ${selectedExperiment}.`,
-        });
-      }
+    setIsGenerating(true);
+    toast({ title: "Processing...", description: `Generating reports for Experiment ${selectedExperiment}. This may take a moment.`});
+    startTransition(async() => {
+        // TODO: Implement the backend action to run all comparisons
+        console.log(`Running checks for experiment ${selectedExperiment}`);
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate async work
+        toast({ title: "Reports Generated", description: `All reports for Experiment ${selectedExperiment} are ready.`});
+        setIsGenerating(false);
     });
   };
+
 
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex items-center gap-2 mb-6">
-        <Shield className="w-8 h-8 text-primary" />
         <h1 className="text-3xl font-bold">Admin Tools</h1>
       </div>
       
       <div className="grid gap-8 lg:grid-cols-3">
-        <Card className="shadow-lg lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><GitCompareArrows/> Plagiarism Checker</CardTitle>
-            <CardDescription>
-              Select an experiment and upload multiple student STEP files to check for header plagiarism.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-                <Label htmlFor="experiment-select-admin">Experiment Number</Label>
-                <Select onValueChange={setSelectedExperiment} value={selectedExperiment}>
-                    <SelectTrigger id="experiment-select-admin">
-                        <div className="flex items-center gap-2">
-                            <TestTube className="w-4 h-4 text-muted-foreground"/>
-                            <SelectValue placeholder="Select an experiment..." />
-                        </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                        {experiments.map((exp) => (
-                            <SelectItem key={exp} value={exp}>Experiment {exp}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-             <div className="space-y-2">
-              <Label>Student Files</Label>
-              <Input type="file" multiple onChange={handleFileSelect(setCheckFiles, true)} className="file:text-primary file:font-semibold" disabled={!selectedExperiment}/>
-               {checkFiles.length > 0 && <p className="text-sm text-muted-foreground pt-1">Loaded {checkFiles.length} file(s)</p>}
-            </div>
-            <Button onClick={runPlagiarismCheck} disabled={isPending || !selectedExperiment} className="w-full">
-              {isPending && flags.length === 0 ? <Loader2 className="animate-spin mr-2" /> : <FileText className="mr-2" />}
-              Run Check
-            </Button>
-
-            {flags.length > 0 && (
-                 <div className="space-y-4 pt-4">
-                    <h3 className="font-semibold text-lg">Plagiarism Report for Experiment {selectedExperiment}</h3>
-                    <Accordion type="single" collapsible className="w-full">
-                        {flags.map((flag, index) => (
-                        <AccordionItem value={`item-${index}`} key={index}>
-                            <AccordionTrigger>
-                                <div className="flex items-center gap-4">
-                                {flag.isFlagged ? <XCircle className="text-destructive"/> : <CheckCircle2 className="text-green-600"/>}
-                                <span className="font-mono text-sm">{flag.fileName}</span>
-                                <Badge variant={flag.isFlagged ? "destructive" : "secondary"}>
-                                    {flag.isFlagged ? "Flagged" : "Clear"}
-                                </Badge>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                                {flag.reason}
-                            </AccordionContent>
-                        </AccordionItem>
-                        ))}
-                    </Accordion>
-                </div>
-            )}
-          </CardContent>
-        </Card>
-        
-        <div className="space-y-8">
+        {/* Left column for actions */}
+        <div className="lg:col-span-1 space-y-8">
             <Card className="shadow-lg">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><UploadCloud/> Upload Base Model</CardTitle>
@@ -248,7 +125,7 @@ export default function AdminPage() {
                 <CardContent className="space-y-6">
                     <div className="space-y-2">
                         <Label htmlFor="experiment-select-upload">Experiment Number</Label>
-                        <Select onValueChange={setSelectedExpForUpload} value={selectedExpForUpload}>
+                        <Select onValueChange={setSelectedExperiment} value={selectedExperiment}>
                             <SelectTrigger id="experiment-select-upload">
                                 <div className="flex items-center gap-2">
                                     <TestTube className="w-4 h-4 text-muted-foreground"/>
@@ -263,44 +140,74 @@ export default function AdminPage() {
                         </Select>
                     </div>
                     <div className="space-y-2">
-                        <Label>Base Model File</Label>
-                        <Input type="file" onChange={handleFileSelect(setBaseModelFile, false)} className="file:text-primary file:font-semibold" disabled={!selectedExpForUpload} accept=".step,.stp"/>
+                        <Label>Base Model File (.step, .stp)</Label>
+                        <Input type="file" onChange={handleBaseModelSelect} className="file:text-primary file:font-semibold" disabled={!selectedExperiment || isUploading} accept=".step,.stp"/>
                         {baseModelFile && <p className="text-sm text-muted-foreground pt-1 truncate">Loaded: {baseModelFile.name}</p>}
                     </div>
-                    <Button onClick={handleBaseModelUpload} disabled={isPending || !selectedExpForUpload || !baseModelFile} className="w-full">
-                        {isPending && baseModelFile ? <Loader2 className="animate-spin mr-2" /> : <Upload className="mr-2" />}
-                        Upload Base Model
+                    <Button onClick={handleBaseModelUpload} disabled={isPending || !selectedExperiment || !baseModelFile || isUploading} className="w-full">
+                        {isUploading ? <Loader2 className="animate-spin mr-2" /> : <UploadCloud className="mr-2" />}
+                        {isUploading ? 'Uploading...' : 'Upload Base Model'}
                     </Button>
                 </CardContent>
             </Card>
-
-            <Card className="shadow-lg">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><FileClock/> File Backup Log</CardTitle>
-                    <CardDescription>A log of all student files that have been backed up.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>File Name</TableHead>
-                            <TableHead>Timestamp</TableHead>
-                            <TableHead>Checked By</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {mockBackups.map((backup) => (
-                            <TableRow key={backup.id}>
-                                <TableCell className="font-medium">{backup.name}</TableCell>
-                                <TableCell>{backup.timestamp}</TableCell>
-                                <TableCell>{backup.checkedBy}</TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
         </div>
+
+        {/* Right column for experiment details */}
+        <Card className="shadow-lg lg:col-span-2">
+          <CardHeader className="flex flex-row justify-between items-center">
+            <div>
+              <CardTitle className="flex items-center gap-2"><Users/> Experiment Submissions</CardTitle>
+              <CardDescription>
+                Review student submissions and generate reports for the selected experiment.
+              </CardDescription>
+            </div>
+            <Button onClick={handleRunChecks} disabled={isPending || !selectedExperiment || isGenerating}>
+                {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <BarChart3 className="mr-2" />}
+                Run Checks
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {!selectedExperiment ? (
+                <div className="flex items-center justify-center h-48 text-muted-foreground">
+                    <p>Please select an experiment to view submissions.</p>
+                </div>
+            ) : (
+                <>
+                <div className="flex justify-end">
+                    <Button variant="outline" disabled={isPending || isGenerating}>
+                        <Download className="mr-2" />
+                        Download Consolidated Report (PDF)
+                    </Button>
+                </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Student</TableHead>
+                        <TableHead>File Name</TableHead>
+                        <TableHead>Deviation (%)</TableHead>
+                        <TableHead className="text-right">Individual Report</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {mockSubmissions.map((sub) => (
+                        <TableRow key={sub.studentId}>
+                            <TableCell className="font-medium">{sub.studentName}</TableCell>
+                            <TableCell>{sub.fileName}</TableCell>
+                            <TableCell className="font-mono">{sub.deviation.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="sm" disabled={isPending}>
+                                    <Download className="mr-2 h-4 w-4"/>
+                                    PDF
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+                </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

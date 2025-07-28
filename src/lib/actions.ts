@@ -2,11 +2,6 @@
 "use server";
 
 import {
-  checkCadPlagiarism,
-  type CheckCadPlagiarismInput,
-  type CheckCadPlagiarismOutput,
-} from "@/ai/flows/check-cad-plagiarism";
-import {
   generateComparisonReport,
   type GenerateComparisonReportInput,
   type GenerateComparisonReportOutput,
@@ -28,7 +23,10 @@ export async function getBaseModelForExperiment(experiment: string): Promise<{ d
     const storageRef = ref(storage, path);
     const downloadUrl = await getDownloadURL(storageRef);
 
-    // Fetch the file from the URL
+    // This is inefficient for large files as it loads the whole file into memory on the server.
+    // In a real-world scenario with large CAD files, you'd handle this differently,
+    // possibly by passing the download URL directly to the AI service if it supports it,
+    // or using a streaming approach.
     const response = await fetch(downloadUrl);
     if (!response.ok) {
         throw new Error(`Failed to fetch base model from ${downloadUrl}`);
@@ -47,7 +45,6 @@ export async function getBaseModelForExperiment(experiment: string): Promise<{ d
 
     return { dataUri, name, size };
   } catch (error: any) {
-    // If the file doesn't exist, it will throw an error. We can treat this as "no base model".
     if (error.code === 'storage/object-not-found') {
         console.log(`No base model found for experiment ${experiment}.`);
         return null;
@@ -70,17 +67,5 @@ export async function generateComparisonReportAction(
   }
 }
 
-export async function checkCadPlagiarismAction(
-  input: CheckCadPlagiarismInput
-): Promise<CheckCadPlagiarismOutput & { error?: string }> {
-  try {
-    const result = await checkCadPlagiarism(input);
-    return result;
-  } catch (e: any) {
-    console.error("Error checking for plagiarism:", e);
-    return {
-      plagiarismFlags: [],
-      error: e.message || "An unknown error occurred.",
-    };
-  }
-}
+// The old plagiarism check is no longer needed with the new workflow.
+// We will add a new batch processing action here later.
