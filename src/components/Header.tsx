@@ -32,14 +32,12 @@ export function Header() {
         if (user && user.email) {
             const admin = await isAdmin(user.email);
             setUserRole(admin ? 'admin' : 'student');
-        } else {
+        } else if (!user && !loading) {
             setUserRole(null);
         }
     };
-    if (user) {
-        checkUserRole();
-    }
-  }, [user]);
+    checkUserRole();
+  }, [user, loading]);
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -52,10 +50,13 @@ export function Header() {
     { href: "/student", label: "My Dashboard", icon: GraduationCap, role: 'student' },
   ];
 
-  const filteredNavLinks = navLinks.filter(link => link.role === userRole);
-  
-  // Don't render header on login page
+  // Don't render anything on login page or while the user's auth state is loading
   if (pathname === '/login' || loading) return null;
+
+  // Wait until the user role is determined on the client to render the full header
+  if (!userRole) return null; 
+
+  const filteredNavLinks = navLinks.filter(link => link.role === userRole);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
