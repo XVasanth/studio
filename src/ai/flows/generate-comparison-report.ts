@@ -4,7 +4,7 @@
 /**
  * @fileOverview This file defines a Genkit flow for generating a comparison report between two CAD models, including a deviation analysis and improvement suggestions.
  *
- * - generateComparisonReport - A function that takes two STEP file data URIs and returns a report, deviation percentage, and suggestions.
+ * - generateComparisonReport - A function that takes two STEP file data URIs and returns a report and deviation percentage.
  * - GenerateComparisonReportInput - The input type for the generateComparisonReport function.
  * - GenerateComparisonReportOutput - The return type for the generateComparisonReport function.
  */
@@ -33,16 +33,11 @@ const GenerateComparisonReportOutputSchema = z.object({
   report: z
     .string()
     .describe(
-      'A report summarizing the key differences between the two CAD models, including potential explanations for the changes.'
+      'A report summarizing the key differences between the two CAD models. This should also include actionable suggestions for the student to improve their model, framed as helpful advice.'
     ),
   deviationPercentage: z
     .number()
     .describe('The percentage of deviation of the modified model from the base model.'),
-  suggestions: z
-    .array(z.string())
-    .describe(
-      'A list of actionable suggestions for the student to improve their model to better match the base model.'
-    ),
 });
 export type GenerateComparisonReportOutput = z.infer<
   typeof GenerateComparisonReportOutputSchema
@@ -62,13 +57,12 @@ const generateComparisonReportPrompt = ai.definePrompt({
   prompt: `You are an expert CAD model comparison tool and a helpful engineering tutor. You will analyze two STEP files to identify differences and provide constructive feedback.
   
 1.  **Analyze Deviation**: Compare the student's model to the base model. Calculate a deviation percentage based on metrics like Hausdorff distance, volume difference, and surface area changes.
-2.  **Generate Report**: Summarize the key geometric and property differences.
-3.  **Provide Suggestions**: Based on the differences, generate a list of clear, actionable suggestions for the student to improve their model. Frame these suggestions as helpful advice (e.g., "Consider adjusting...", "Review the dimensions of...", "Check if you have included...").
+2.  **Generate Comprehensive Report**: Summarize the key geometric and property differences. At the end of the report, include a section with clear, actionable suggestions for the student to improve their model. Frame these suggestions as helpful advice (e.g., "Consider adjusting...", "Review the dimensions of...", "Check if you have included...").
 
 Base Model: {{media url=baseModelDataUri}}
 Modified Model: {{media url=modifiedModelDataUri}}
 
-Output a JSON object with the deviation percentage, a detailed report, and an array of improvement suggestions.
+Output a JSON object with the deviation percentage and a detailed report that includes improvement suggestions.
 `,
 });
 

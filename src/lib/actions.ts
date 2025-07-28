@@ -31,7 +31,7 @@ export async function generateComparisonReportAction(
     return result;
   } catch (e: any) {
     console.error("Error generating comparison report:", e);
-    return { report: "", deviationPercentage: 0, suggestions: [], error: e.message || "An unknown error occurred." };
+    return { report: "", deviationPercentage: 0, error: e.message || "An unknown error occurred." };
   }
 }
 
